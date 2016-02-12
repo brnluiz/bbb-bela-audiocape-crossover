@@ -25,13 +25,34 @@
 // in from the call to initAudio().
 //
 // Return true on success; returning false halts the program.
+#define BEAGLERT_FREQ 44100.00
+#define FILTER_ORDER  2
+
+struct FilterParameters {
+	float a0;
+	float a1;
+	float a2;
+	float b0;
+	float b1;
+	float b2;
+
+	float x[FILTER_ORDER];
+	float y[FILTER_ORDER];
+};
+FilterParameters gLowPass, gHighPass;
+
+const float c = 2 * BEAGLERT_FREQ;
+const float d = c * 1.4142;
+
+float gCrossoverFrequency;
+float w0;
 
 bool setup(BeagleRTContext *context, void *userData)
 {
-	float crossoverFrequency;
 	// Retrieve a parameter passed in from the initAudio() call
 	if(userData != 0)
-		crossoverFrequency = *(float *)userData;
+		gCrossoverFrequency = *(float *)userData;
+	w0 = 2 * M_PI * gCrossoverFrequency;
 
 	/* TASK:
 	 * Calculate the filter coefficients based on the given
@@ -40,6 +61,28 @@ bool setup(BeagleRTContext *context, void *userData)
 	 * Initialise any previous state (clearing buffers etc.)
 	 * to prepare for calls to render()
 	 */
+	gLowPass.a0 = pow(c,2) + d*w0 + pow(w0,2);
+	gLowPass.a1 = (2*pow(w0,2) - 2*pow(c,2)) / gLowPass.a0;
+	gLowPass.a2 = (pow(c,2) - d*w0 + pow(w0,2)) / gLowPass.a0;
+	gLowPass.b0 = (pow(w0,2)) / gLowPass.a0;
+	gLowPass.b1 = (2*pow(w0,2)) / gLowPass.a0;
+	gLowPass.b2 = (pow(w0,2)) / gLowPass.a0;
+	gLowPass.a0 = 1;
+
+	gHighPass.a0 = pow(c,2) + d*w0 + pow(w0,2);
+	gHighPass.a1 = (2*pow(w0,2) - 2*pow(c,2)) / gHighPass.a0;
+	gHighPass.a2 = (pow(c,2) - d*w0 + pow(w0,2)) / gHighPass.a0;
+	gHighPass.b0 = (pow(c,2)) / gHighPass.a0;
+	gHighPass.b1 = (2*pow(c,2)) / gHighPass.a0;
+	gHighPass.b2 = (pow(c,2)) / gHighPass.a0;
+	gHighPass.a0 = 1;
+
+	for(int i = 0; i < FILTER_ORDER; i++) {
+		gLowPass.x[i] = 0;
+		gLowPass.y[i] = 0;
+		gHighPass.x[i] = 0;
+		gHighPass.y[i] = 0;
+	}
 
 	return true;
 }
@@ -51,19 +94,43 @@ bool setup(BeagleRTContext *context, void *userData)
 
 void render(BeagleRTContext *context, void *userData)
 {
-	/* TASK:
-	 * Mix the two input channels together.
-	 *
-	 * Apply a lowpass filter and a highpass filter, sending the
-	 * lowpass output to the left channel and the highpass output
-	 * to the right channel.
-	 */
+	for(unsigned int n = 0; n < context->audioFrames; n++) {
+		float sample = 0;
+
+		// Get the input
+		for(unsigned int ch = 0; ch < context->audioChannels; ch++) {
+			sample += context->audioIn[n * context->audioChannels + ch];
+		}
+
+		// Implement the low pass filter
+		float lowPassOut = gLowPass.b2 * gLowPass.x[1] + gLowPass.b1 * gLowPass.x[0] + gLowPass.b0 * sample 
+		- (gLowPass.a2 * gLowPass.y[1] + gLowPass.a1 * gLowPass.y[0]);
+
+		// Save the samples the old samples
+		gLowPass.x[1] = gLowPass.x[0];
+		gLowPass.x[0] = sample;
+		gLowPass.y[1] = gLowPass.y[0];
+		gLowPass.y[0] = lowPassOut;
+
+		// Implement the high pass filter
+		float highPassOut = gHighPass.b2 * gHighPass.x[1] + gHighPass.b1 * gHighPass.x[0] + gHighPass.b0 * sample 
+		- (gHighPass.a2 * gHighPass.y[1] + gHighPass.a1 * gHighPass.y[0]);
+
+		// Save the samples the old samples
+		gHighPass.x[1] = gHighPass.x[0];
+		gHighPass.x[0] = sample;
+		gHighPass.y[1] = gHighPass.y[0];
+		gHighPass.y[0] = highPassOut;
+
+		context->audioOut[n * context->audioChannels + 0] = lowPassOut;
+		context->audioOut[n * context->audioChannels + 1] = highPassOut;
+	}
 }
 
 // cleanup_render() is called once at the end, after the audio has stopped.
 // Release any resources that were allocated in initialise_render().
 
-void cleanup_render(BeagleRTContext *context, void *userData)
+void cleanup(BeagleRTContext *context, void *userData)
 {
 	/* TASK:
 	 * If you allocate any memory, be sure to release it here.

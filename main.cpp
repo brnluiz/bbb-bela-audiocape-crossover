@@ -37,7 +37,7 @@ void usage(const char * processName)
 
 int main(int argc, char *argv[])
 {
-	RTAudioSettings settings;	// Standard audio settings
+	BeagleRTInitSettings settings;	// Standard audio settings
 	float frequency = 1000.0;	// Frequency of crossover
 
 	struct option customOptions[] =
