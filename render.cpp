@@ -46,7 +46,7 @@ bool setup(BeagleRTContext *context, void *userData)
 	if(userData != 0) {
 		settings = *(UserSettings *)userData;
 	}
-	float w0 = 2 * M_PI * settings.frequency;
+	float w = 2 * M_PI * settings.frequency;
 
 	/* TASK:
 	 * Calculate the filter coefficients based on the given
@@ -58,17 +58,17 @@ bool setup(BeagleRTContext *context, void *userData)
 
 
 	for (int i = 0; i < FILTER_NUM; i++) {
-		gLowPass[i].a0 = pow(c,2) + d*w0 + pow(w0,2);
-		gLowPass[i].a1 = (2*pow(w0,2) - 2*pow(c,2)) / gLowPass[i].a0;
-		gLowPass[i].a2 = (pow(c,2) - d*w0 + pow(w0,2)) / gLowPass[i].a0;
-		gLowPass[i].b0 = (pow(w0,2)) / gLowPass[i].a0;
-		gLowPass[i].b1 = (2*pow(w0,2)) / gLowPass[i].a0;
-		gLowPass[i].b2 = (pow(w0,2)) / gLowPass[i].a0;
+		gLowPass[i].a0 = pow(c,2) + d*w + pow(w,2);
+		gLowPass[i].a1 = (2*pow(w,2) - 2*pow(c,2)) / gLowPass[i].a0;
+		gLowPass[i].a2 = (pow(c,2) - d*w + pow(w,2)) / gLowPass[i].a0;
+		gLowPass[i].b0 = (pow(w,2)) / gLowPass[i].a0;
+		gLowPass[i].b1 = (2*pow(w,2)) / gLowPass[i].a0;
+		gLowPass[i].b2 = (pow(w,2)) / gLowPass[i].a0;
 		gLowPass[i].a0 = 1;
 
-		gHighPass[i].a0 = pow(c,2) + d*w0 + pow(w0,2);
-		gHighPass[i].a1 = (2*pow(w0,2) - 2*pow(c,2)) / gHighPass[i].a0;
-		gHighPass[i].a2 = (pow(c,2) - d*w0 + pow(w0,2)) / gHighPass[i].a0;
+		gHighPass[i].a0 = pow(c,2) + d*w + pow(w,2);
+		gHighPass[i].a1 = (2*pow(w,2) - 2*pow(c,2)) / gHighPass[i].a0;
+		gHighPass[i].a2 = (pow(c,2) - d*w + pow(w,2)) / gHighPass[i].a0;
 		gHighPass[i].b0 = (pow(c,2)) / gHighPass[i].a0;
 		gHighPass[i].b1 = (2*pow(c,2)) / gHighPass[i].a0;
 		gHighPass[i].b2 = (pow(c,2)) / gHighPass[i].a0;
@@ -127,6 +127,12 @@ void render(BeagleRTContext *context, void *userData)
 		float sample = (context->audioIn[n*context->audioChannels] + context->audioIn[n*context->audioChannels+1]) * 0.5;
 		
 		if (settings.linkwitz) {
+			OutputCrossaudio stage1 = filterButterworth(sample, gLowPass[0], gHighPass[0]);
+			sample = stage1.high;
+			OutputCrossaudio stage2 = filterButterworth(sample, gLowPass[1], gHighPass[1]);
+
+			output.low = stage1.low;
+			output.high = stage2.high;
 		} else {
 			OutputCrossaudio stage1 = filterButterworth(sample, gLowPass[0], gHighPass[0]);
 			output.low = stage1.low;
