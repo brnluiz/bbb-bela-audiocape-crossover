@@ -35,21 +35,18 @@ struct OutputCrossaudio {
 	float low;
 };
 OutputCrossaudio output;
-
+UserSettings settings;
 
 bool setup(BeagleRTContext *context, void *userData)
 {
 	const float c = 2 * BEAGLERT_FREQ;
 	const float d = c * 1.4142;
 
-	float crossoverFrequency;
-	float w0;
 	// Retrieve a parameter passed in from the initAudio() call
 	if(userData != 0) {
-		UserSettings userSettings = *(UserSettings *)userData;
-		crossoverFrequency = userSettings.frequency;
+		settings = *(UserSettings *)userData;
 	}
-	w0 = 2 * M_PI * crossoverFrequency;
+	float w0 = 2 * M_PI * settings.frequency;
 
 	/* TASK:
 	 * Calculate the filter coefficients based on the given
@@ -129,17 +126,20 @@ void render(BeagleRTContext *context, void *userData)
 		// Get the input
 		float sample = (context->audioIn[n*context->audioChannels] + context->audioIn[n*context->audioChannels+1]) * 0.5;
 		
-		OutputCrossaudio stage1 = filterButterworth(sample, gLowPass[0], gHighPass[0]);
-		// sample = (stage1.high + stage1.low) / 2;
+		if (settings.linkwitz) {
+		} else {
+			OutputCrossaudio stage1 = filterButterworth(sample, gLowPass[0], gHighPass[0]);
+			output.low = stage1.low;
+			output.high = stage1.high;
+		}
 
-		// OutputCrossaudio stage2 = filterButterworth(sample, gLowPass[1], gHighPass[1]);
 
 		// Audio output
 		// Butterworth
-		context->audioOut[n * context->audioChannels + 0] = stage1.low; // Left channel
-		context->audioOut[n * context->audioChannels + 1] = stage1.high; // Right channel
-		// context->audioOut[n * context->audioChannels + 0] = stage2.low; // Left channel
-		// context->audioOut[n * context->audioChannels + 1] = stage2.high; // Right channel
+		// context->audioOut[n * context->audioChannels + 0] = stage1.low; // Left channel
+		// context->audioOut[n * context->audioChannels + 1] = stage1.high; // Right channel
+		context->audioOut[n * context->audioChannels + 0] = output.low; // Left channel
+		context->audioOut[n * context->audioChannels + 1] = output.high; // Right channel
 	}
 }
 

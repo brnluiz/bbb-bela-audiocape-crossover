@@ -12,6 +12,4 @@ struct UserSettings{
     bool bassboost;
 };
 
-extern UserSettings userSettings;
-
 #endif
