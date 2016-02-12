@@ -16,8 +16,11 @@
 #include <signal.h>
 #include <getopt.h>
 #include <BeagleRT.h>
+#include "UserSettings.h"
 
 using namespace std;
+
+UserSettings userSettings;
 
 // Handle Ctrl-C by requesting that the audio rendering stop
 void interrupt_handler(int var)
@@ -38,12 +41,18 @@ void usage(const char * processName)
 int main(int argc, char *argv[])
 {
 	BeagleRTInitSettings settings;	// Standard audio settings
-	float frequency = 1000.0;	// Frequency of crossover
+	
+	userSettings.frequency = 1000.0;
+	userSettings.butterworth = true;
+	userSettings.linkwitz = false;
+	userSettings.bassboost = false;
 
 	struct option customOptions[] =
 	{
 		{"help", 0, NULL, 'h'},
 		{"frequency", 1, NULL, 'f'},
+		{"linkwitz", 1, NULL, 'l'},
+		{"bassboost", 1, NULL, 'b'},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -53,19 +62,26 @@ int main(int argc, char *argv[])
 	// Parse command-line arguments
 	while (1) {
 		int c;
-		if ((c = BeagleRT_getopt_long(argc, argv, "hf:", customOptions, &settings)) < 0)
+		if ((c = BeagleRT_getopt_long(argc, argv, "hf:lb", customOptions, &settings)) < 0)
 				break;
 		switch (c) {
 		case 'h':
 				usage(basename(argv[0]));
 				exit(0);
         case 'f':
-        		frequency = atof(optarg);
-        		if(frequency < 20.0)
-        			frequency = 20.0;
-        		if(frequency > 5000.0)
-        			frequency = 5000.0;
+        		userSettings.frequency = atof(optarg);
+        		if(userSettings.frequency < 20.0)
+        			userSettings.frequency = 20.0;
+        		if(userSettings.frequency > 5000.0)
+        			userSettings.frequency = 5000.0;
         		break;
+        case 'l':
+        		userSettings.butterworth = false;
+        		userSettings.linkwitz = true;
+        		break;
+        case 'b':
+        		userSettings.bassboost = true;
+        		break;        		
 		case '?':
 		default:
 				usage(basename(argv[0]));
@@ -74,7 +90,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Initialise the PRU audio device
-	if(BeagleRT_initAudio(&settings, &frequency) != 0) {
+	if(BeagleRT_initAudio(&settings, &userSettings) != 0) {
 		cout << "Error: unable to initialise audio" << endl;
 		return -1;
 	}

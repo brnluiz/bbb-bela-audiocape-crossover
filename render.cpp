@@ -14,6 +14,7 @@
 #include <cmath>
 #include <Utilities.h>
 #include <rtdk.h>
+#include "UserSettings.h"
 
 /* TASK: declare any global variables you need here */
 
@@ -57,8 +58,10 @@ float w0;
 bool setup(BeagleRTContext *context, void *userData)
 {
 	// Retrieve a parameter passed in from the initAudio() call
-	if(userData != 0)
-		gCrossoverFrequency = *(float *)userData;
+	if(userData != 0) {
+		UserSettings userSettings = *(UserSettings *)userData;
+		gCrossoverFrequency = userSettings.frequency;
+	}
 	w0 = 2 * M_PI * gCrossoverFrequency;
 
 	/* TASK:
