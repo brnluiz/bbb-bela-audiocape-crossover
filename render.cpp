@@ -95,16 +95,16 @@ bool setup(BeagleRTContext *context, void *userData)
 void render(BeagleRTContext *context, void *userData)
 {
 	for(unsigned int n = 0; n < context->audioFrames; n++) {
-		float sample = 0;
-
 		// Get the input
-		for(unsigned int ch = 0; ch < context->audioChannels; ch++) {
-			sample += context->audioIn[n * context->audioChannels + ch];
-		}
+		float sample = (context->audioIn[n*context->audioChannels] + context->audioIn[n*context->audioChannels+1]) * 0.5;
 
 		// Implement the low pass filter
 		float lowPassOut = gLowPass.b2 * gLowPass.x[1] + gLowPass.b1 * gLowPass.x[0] + gLowPass.b0 * sample 
 		- (gLowPass.a2 * gLowPass.y[1] + gLowPass.a1 * gLowPass.y[0]);
+
+		// Implement the high pass filter
+		float highPassOut = gHighPass.b2 * gHighPass.x[1] + gHighPass.b1 * gHighPass.x[0] + gHighPass.b0 * sample 
+		- (gHighPass.a2 * gHighPass.y[1] + gHighPass.a1 * gHighPass.y[0]);
 
 		// Save the samples the old samples
 		gLowPass.x[1] = gLowPass.x[0];
@@ -112,18 +112,14 @@ void render(BeagleRTContext *context, void *userData)
 		gLowPass.y[1] = gLowPass.y[0];
 		gLowPass.y[0] = lowPassOut;
 
-		// Implement the high pass filter
-		float highPassOut = gHighPass.b2 * gHighPass.x[1] + gHighPass.b1 * gHighPass.x[0] + gHighPass.b0 * sample 
-		- (gHighPass.a2 * gHighPass.y[1] + gHighPass.a1 * gHighPass.y[0]);
-
 		// Save the samples the old samples
 		gHighPass.x[1] = gHighPass.x[0];
 		gHighPass.x[0] = sample;
 		gHighPass.y[1] = gHighPass.y[0];
 		gHighPass.y[0] = highPassOut;
 
-		context->audioOut[n * context->audioChannels + 0] = lowPassOut;
-		context->audioOut[n * context->audioChannels + 1] = highPassOut;
+		context->audioOut[n * context->audioChannels + 0] = lowPassOut; // Left channel
+		context->audioOut[n * context->audioChannels + 1] = highPassOut; // Right channel
 	}
 }
 
