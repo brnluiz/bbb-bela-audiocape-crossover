@@ -28,7 +28,7 @@
 //
 // Return true on success; returning false halts the program.
 
-FilterParameters gLowPass[FILTER_NUM], gHighPass[FILTER_NUM];
+FilterParameters gLowPass, gHighPass;
 
 struct OutputCrossaudio {
 	float high;
@@ -55,46 +55,71 @@ bool setup(BeagleRTContext *context, void *userData)
 	 * Initialise any previous state (clearing buffers etc.)
 	 * to prepare for calls to render()
 	 */
+	if(settings.linkwitz) {
+		gLowPass.a[0] = pow(c,4)+2*pow(c,2)*d*w+2*pow(c,2)*pow(w,2)+pow(d,2)*pow(w,2)+2*d*pow(w,3)+pow(w,4);
+		gLowPass.a[1] = (-(4*pow(c,4))-(4*pow(c,2)*d*w)+(4*pow(w,4))+(4*d*pow(w,3))) / gLowPass.a[0];
+		gLowPass.a[2] = (+(6*pow(c,4))+(6*pow(w,4))-(4*pow(c,2)*pow(w,2))-(2*pow(d,2)*pow(w,2))) / gLowPass.a[0];
+		gLowPass.a[3] = (-(4*pow(c,4))-(4*d*pow(w,3))+(4*pow(w,4))+(4*pow(c,2)*d*w)) / gLowPass.a[0];
+		gLowPass.a[4] = (pow(c,4)-(2*pow(c,2)*d*w)-(2*d*pow(w,3))+(pow(d,2)*pow(w,2))+pow(w,4)+(2*pow(c,2)*pow(w,2))) / gLowPass.a[0];
+		
+		gLowPass.b[0] = (1*pow(w,4)) / gLowPass.a[0];
+		gLowPass.b[1] = (4*pow(w,2)) / gLowPass.a[0];
+		gLowPass.b[2] = (6*pow(w,2)) / gLowPass.a[0];
+		gLowPass.b[3] = (4*pow(w,2)) / gLowPass.a[0];
+		gLowPass.b[4] = (1*pow(w,4)) / gLowPass.a[0];
 
 
-	for (int i = 0; i < FILTER_NUM; i++) {
-		gLowPass[i].a0 = pow(c,2) + d*w + pow(w,2);
-		gLowPass[i].a1 = (2*pow(w,2) - 2*pow(c,2)) / gLowPass[i].a0;
-		gLowPass[i].a2 = (pow(c,2) - d*w + pow(w,2)) / gLowPass[i].a0;
-		gLowPass[i].b0 = (pow(w,2)) / gLowPass[i].a0;
-		gLowPass[i].b1 = (2*pow(w,2)) / gLowPass[i].a0;
-		gLowPass[i].b2 = (pow(w,2)) / gLowPass[i].a0;
-		gLowPass[i].a0 = 1;
+		gHighPass.a[0] = gLowPass.a[0];
+		gHighPass.a[1] = gLowPass.a[1];
+		gHighPass.a[2] = gLowPass.a[2];
+		gHighPass.a[3] = gLowPass.a[3];
+		gHighPass.a[4] = gLowPass.a[4];
 
-		gHighPass[i].a0 = pow(c,2) + d*w + pow(w,2);
-		gHighPass[i].a1 = (2*pow(w,2) - 2*pow(c,2)) / gHighPass[i].a0;
-		gHighPass[i].a2 = (pow(c,2) - d*w + pow(w,2)) / gHighPass[i].a0;
-		gHighPass[i].b0 = (pow(c,2)) / gHighPass[i].a0;
-		gHighPass[i].b1 = (2*pow(c,2)) / gHighPass[i].a0;
-		gHighPass[i].b2 = (pow(c,2)) / gHighPass[i].a0;
-		gHighPass[i].a0 = 1;
+		gHighPass.b[0] = (1*pow(c,4)) / gLowPass.a[0];
+		gHighPass.b[1] = (4*pow(c,2)) / gLowPass.a[0];
+		gHighPass.b[2] = (6*pow(c,2)) / gLowPass.a[0];
+		gHighPass.b[3] = (4*pow(c,2)) / gLowPass.a[0];
+		gHighPass.b[4] = (1*pow(c,4)) / gLowPass.a[0];
+
+		gLowPass.a[0] = 1;
+		gHighPass.a[0] = 1;
+	} else {
+		gLowPass.a[0] = pow(c,2) + d*w + pow(w,2);
+		gLowPass.a[1] = (2*pow(w,2) - 2*pow(c,2)) / gLowPass.a[0];
+		gLowPass.a[2] = (pow(c,2) - d*w + pow(w,2)) / gLowPass.a[0];
+		gLowPass.b[0] = (pow(w,2)) / gLowPass.a[0];
+		gLowPass.b[1] = (2*pow(w,2)) / gLowPass.a[0];
+		gLowPass.b[2] = (pow(w,2)) / gLowPass.a[0];
+
+		gHighPass.a[0] = gLowPass.a[0];
+		gHighPass.a[1] = gLowPass.a[1];
+		gHighPass.a[2] = gLowPass.a[2];
+		gHighPass.b[0] = (pow(c,2)) / gLowPass.a[0];
+		gHighPass.b[1] = (2*pow(c,2)) / gLowPass.a[0];
+		gHighPass.b[2] = (pow(c,2)) / gLowPass.a[0];
+		
+		gLowPass.a[0] = 1;
+		gHighPass.a[0] = 1;
 	}
 
-	for(int i = 0; i < FILTER_ORDER; i++) {
-		for(int j = 0; j < FILTER_NUM; j++) {
-			gLowPass[j].x[i] = 0;
-			gLowPass[j].y[i] = 0;
-			gHighPass[j].x[i] = 0;
-			gHighPass[j].y[i] = 0;
-		}
+	for(int i = 0; i < 8; i++) {
+		gLowPass.x[i] = 0;
+		gLowPass.y[i] = 0;
+		gHighPass.x[i] = 0;
+		gHighPass.y[i] = 0;
 	}
 
 	return true;
 }
 
-OutputCrossaudio filterButterworth(float sample, FilterParameters &lowPass, FilterParameters &highPass) {
+OutputCrossaudio crossoverButterworth(float sample, FilterParameters &lowPass, FilterParameters &highPass) {
 	// Implement the low pass filter
-	float lowPassOut = lowPass.b2 * lowPass.x[1] + lowPass.b1 * lowPass.x[0] + lowPass.b0 * sample 
-	- (lowPass.a2 * lowPass.y[1] + lowPass.a1 * lowPass.y[0]);
+	float lowPassOut = lowPass.b[2] * lowPass.x[1] + lowPass.b[1] * lowPass.x[0] + lowPass.b[0] * sample 
+	- (lowPass.a[2] * lowPass.y[1] + lowPass.a[1] * lowPass.y[0]);
 
 	// Implement the high pass filter
-	float highPassOut = highPass.b2 * highPass.x[1] + highPass.b1 * highPass.x[0] + highPass.b0 * sample 
-	- (highPass.a2 * highPass.y[1] + highPass.a1 * highPass.y[0]);
+	float highPassOut = highPass.b[2] * highPass.x[1] + highPass.b[1] * highPass.x[0] + highPass.b[0] * sample 
+	- (highPass.a[2] * highPass.y[1] + highPass.a[1] * highPass.y[0]);
 
 	// Save the samples the old samples
 	lowPass.x[1] = lowPass.x[0];
@@ -105,6 +130,48 @@ OutputCrossaudio filterButterworth(float sample, FilterParameters &lowPass, Filt
 	// Save the samples the old samples
 	highPass.x[1] = highPass.x[0];
 	highPass.x[0] = sample;
+	highPass.y[1] = highPass.y[0];
+	highPass.y[0] = highPassOut;
+
+	OutputCrossaudio output;
+	output.low = lowPassOut;
+	output.high = highPassOut;
+
+	return output;
+}
+
+OutputCrossaudio crossoverLinkwitz(float sample, FilterParameters &lowPass, FilterParameters &highPass) {
+	// Implement the low pass filter
+	float lowPassOut = lowPass.b[4] * lowPass.x[3] + lowPass.b[3] * lowPass.x[2] + lowPass.b[2] * lowPass.x[1] + lowPass.b[1] * lowPass.x[0] + lowPass.b[0] * sample 
+	- ( + lowPass.a[4] * lowPass.y[3] + lowPass.a[3] * lowPass.y[2] + lowPass.a[2] * lowPass.y[1] + lowPass.a[1] * lowPass.y[0]);
+
+	// Implement the high pass filter
+	float highPassOut = highPass.b[4] * highPass.x[3] + highPass.b[3] * highPass.x[2] + highPass.b[2] * highPass.x[1] + highPass.b[1] * highPass.x[0] + highPass.b[0] * sample 
+	- ( + highPass.a[4] * highPass.y[3] + highPass.a[3] * highPass.y[2] + highPass.a[2] * highPass.y[1] + highPass.a[1] * highPass.y[0]);
+
+	// Save the samples the old samples
+	lowPass.x[4] = lowPass.x[3];
+	lowPass.x[3] = lowPass.x[2];
+	lowPass.x[2] = lowPass.x[1];
+	lowPass.x[1] = lowPass.x[0];
+	lowPass.x[0] = sample;
+
+	lowPass.y[4] = lowPass.y[3];
+	lowPass.y[3] = lowPass.y[2];
+	lowPass.y[2] = lowPass.y[1];
+	lowPass.y[1] = lowPass.y[0];
+	lowPass.y[0] = lowPassOut;
+
+	// Save the samples the old samples
+	highPass.x[4] = highPass.x[3];
+	highPass.x[3] = highPass.x[2];
+	highPass.x[2] = highPass.x[1];
+	highPass.x[1] = highPass.x[0];
+	highPass.x[0] = sample;
+
+	highPass.y[4] = highPass.y[3];
+	highPass.y[3] = highPass.y[2];
+	highPass.y[2] = highPass.y[1];
 	highPass.y[1] = highPass.y[0];
 	highPass.y[0] = highPassOut;
 
@@ -127,23 +194,17 @@ void render(BeagleRTContext *context, void *userData)
 		float sample = (context->audioIn[n*context->audioChannels] + context->audioIn[n*context->audioChannels+1]) * 0.5;
 		
 		if (settings.linkwitz) {
-			OutputCrossaudio stage1 = filterButterworth(sample, gLowPass[0], gHighPass[0]);
-			sample = stage1.high;
-			OutputCrossaudio stage2 = filterButterworth(sample, gLowPass[1], gHighPass[1]);
+			OutputCrossaudio stage1 = crossoverLinkwitz(sample, gLowPass, gHighPass);
 
 			output.low = stage1.low;
-			output.high = stage2.high;
+			output.low = stage1.high;
 		} else {
-			OutputCrossaudio stage1 = filterButterworth(sample, gLowPass[0], gHighPass[0]);
+			OutputCrossaudio stage1 = crossoverButterworth(sample, gLowPass, gHighPass);
 			output.low = stage1.low;
 			output.high = stage1.high;
 		}
 
-
 		// Audio output
-		// Butterworth
-		// context->audioOut[n * context->audioChannels + 0] = stage1.low; // Left channel
-		// context->audioOut[n * context->audioChannels + 1] = stage1.high; // Right channel
 		context->audioOut[n * context->audioChannels + 0] = output.low; // Left channel
 		context->audioOut[n * context->audioChannels + 1] = output.high; // Right channel
 	}

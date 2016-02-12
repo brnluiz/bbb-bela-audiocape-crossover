@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 {
 	BeagleRTInitSettings settings;	// Standard audio settings
 	
-	userSettings.frequency = 1000.0;
+	userSettings.frequency = 3000.0;
 	userSettings.butterworth = true;
 	userSettings.linkwitz = false;
 	userSettings.bassboost = false;

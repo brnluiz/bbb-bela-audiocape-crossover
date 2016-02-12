@@ -2,15 +2,13 @@
 #define BUTTERWORTH_FILTER_PARAMETERS
 
 struct FilterParameters {
-    float a0;
-    float a1;
-    float a2;
-    float b0;
-    float b1;
-    float b2;
+    float a[8];
+    float b[8];
 
-    float x[FILTER_ORDER];
-    float y[FILTER_ORDER];
+    float x[8];
+    float y[8];
+
+    unsigned short order;
 };
 
 #endif
