@@ -15,6 +15,7 @@
 #include <Utilities.h>
 #include <rtdk.h>
 #include "UserSettings.h"
+#include "ButterworthFilterParameters.h"
 
 /* TASK: declare any global variables you need here */
 
@@ -26,21 +27,7 @@
 // in from the call to initAudio().
 //
 // Return true on success; returning false halts the program.
-#define BEAGLERT_FREQ 	44100.00
-#define FILTER_ORDER  	2
-#define FILTER_NUM		2
 
-struct FilterParameters {
-	float a0;
-	float a1;
-	float a2;
-	float b0;
-	float b1;
-	float b2;
-
-	float x[FILTER_ORDER];
-	float y[FILTER_ORDER];
-};
 FilterParameters gLowPass[FILTER_NUM], gHighPass[FILTER_NUM];
 
 struct OutputCrossaudio {
@@ -49,20 +36,20 @@ struct OutputCrossaudio {
 };
 OutputCrossaudio output;
 
-const float c = 2 * BEAGLERT_FREQ;
-const float d = c * 1.4142;
-
-float gCrossoverFrequency;
-float w0;
 
 bool setup(BeagleRTContext *context, void *userData)
 {
+	const float c = 2 * BEAGLERT_FREQ;
+	const float d = c * 1.4142;
+
+	float crossoverFrequency;
+	float w0;
 	// Retrieve a parameter passed in from the initAudio() call
 	if(userData != 0) {
 		UserSettings userSettings = *(UserSettings *)userData;
-		gCrossoverFrequency = userSettings.frequency;
+		crossoverFrequency = userSettings.frequency;
 	}
-	w0 = 2 * M_PI * gCrossoverFrequency;
+	w0 = 2 * M_PI * crossoverFrequency;
 
 	/* TASK:
 	 * Calculate the filter coefficients based on the given
@@ -71,6 +58,8 @@ bool setup(BeagleRTContext *context, void *userData)
 	 * Initialise any previous state (clearing buffers etc.)
 	 * to prepare for calls to render()
 	 */
+
+
 	for (int i = 0; i < FILTER_NUM; i++) {
 		gLowPass[i].a0 = pow(c,2) + d*w0 + pow(w0,2);
 		gLowPass[i].a1 = (2*pow(w0,2) - 2*pow(c,2)) / gLowPass[i].a0;
