@@ -128,8 +128,7 @@ void render(BeagleRTContext *context, void *userData)
 		
 		if (settings.linkwitz) {
 			OutputCrossaudio stage1 = filterButterworth(sample, gLowPass[0], gHighPass[0]);
-			sample = stage1.high;
-			OutputCrossaudio stage2 = filterButterworth(sample, gLowPass[1], gHighPass[1]);
+			OutputCrossaudio stage2 = filterButterworth(stage1.high, gLowPass[1], gHighPass[1]);
 
 			output.low = stage1.low;
 			output.high = stage2.high;
