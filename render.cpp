@@ -58,11 +58,11 @@ bool setup(BeagleRTContext *context, void *userData)
 
 	gHighPass.order = 2;
 	gLowPass.order  = 2;
-	gLowPass.order  = 2;
 
 	gLowPass.a[0] = pow(c,2) + d*w + pow(w,2);
 	gLowPass.a[1] = (2*pow(w,2) - 2*pow(c,2));
 	gLowPass.a[2] = (pow(c,2) - d*w + pow(w,2));		
+
 	gLowPass.b[0] = (pow(w,2));
 	gLowPass.b[1] = (2*pow(w,2));
 	gLowPass.b[2] = (pow(w,2));
@@ -70,6 +70,7 @@ bool setup(BeagleRTContext *context, void *userData)
 	gHighPass.a[0] = gLowPass.a[0];
 	gHighPass.a[1] = gLowPass.a[1];
 	gHighPass.a[2] = gLowPass.a[2];
+	
 	gHighPass.b[0] = (pow(c,2));
 	gHighPass.b[1] = -(2*pow(c,2));
 	gHighPass.b[2] = (pow(c,2));
@@ -107,6 +108,7 @@ bool setup(BeagleRTContext *context, void *userData)
 		gHighPass.b[4] = (pow(bHighPass.b[2],2));
 	}
 
+	// Reset some parameters and divide the others by the common factor a[0]
 	for(int i = 0; i < MAX_FILTER_ORDER; i++) {
 		gLowPass.x[i]  = 0;
 		gLowPass.y[i]  = 0;
@@ -121,6 +123,8 @@ bool setup(BeagleRTContext *context, void *userData)
 			gHighPass.a[i] = gHighPass.a[i]/gHighPass.a[0];
 		}
 	}
+
+	// Divide the a[0]
 	gLowPass.a[0]  = 1;
 	gHighPass.a[0] = 1;
 
@@ -129,16 +133,13 @@ bool setup(BeagleRTContext *context, void *userData)
 
 float filter(float sample, FilterParameters &filter) {
 	float out = 0;
-	// Create the filter output
 
-	for(int i = 0; i <= filter.order; i++) {
-		if (i > 0) {
-			out += filter.b[i] * filter.x[i-1];
-			out -= filter.a[i] * filter.y[i-1];
-		} else {
-			out += filter.b[0] * sample;
-		}
+	// Create the filter output
+	for(int i = 1; i <= filter.order; i++) {
+		out += filter.b[i] * filter.x[i-1];
+		out -= filter.a[i] * filter.y[i-1];
 	}
+	out += filter.b[0] * sample;
 
 	// Save data for later
 	for (int i = 1; i < filter.order; i++) {
