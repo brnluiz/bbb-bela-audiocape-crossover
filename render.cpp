@@ -67,12 +67,11 @@ bool setup(BeagleRTContext *context, void *userData)
 	gLowPass.b[1] = (2*pow(w,2));
 	gLowPass.b[2] = (pow(w,2));
 
-	
 	gHighPass.a[0] = gLowPass.a[0];
 	gHighPass.a[1] = gLowPass.a[1];
 	gHighPass.a[2] = gLowPass.a[2];
 	gHighPass.b[0] = (pow(c,2));
-	gHighPass.b[1] = (2*pow(c,2));
+	gHighPass.b[1] = -(2*pow(c,2));
 	gHighPass.b[2] = (pow(c,2));
 
 	if(settings.linkwitz) {
@@ -245,7 +244,7 @@ void render(BeagleRTContext *context, void *userData)
 		// Do the crossover based on the filter details
 		OutputCrossaudio out;
 		if(settings.butterworth) {
-			out = crossover(sample, gLowPass, gHighPass);
+			out = butterworthCross(sample, gLowPass, gHighPass);
 		} else if(settings.linkwitz) {
 			out = linkwitzCross(sample, gLowPass, gHighPass);
 		}
