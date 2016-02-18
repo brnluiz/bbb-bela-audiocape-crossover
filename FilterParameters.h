@@ -1,4 +1,9 @@
-#ifndef FILTER_PARAMETERS
+/*
+ * Student: Bruno Luiz da Silva
+ * ID: 150724708
+ */
+
+ #ifndef FILTER_PARAMETERS
 #define FILTER_PARAMETERS
 
 #define MAX_FILTER_ORDER 8

@@ -1,5 +1,7 @@
 /*
  * assignment1_crossover
+ * Student: Bruno Luiz da Silva
+ * ID: 150724708
  * RTDSP 2016
  *
  * First assignment for ECS732 RTDSP, to implement a 2-way audio crossover
